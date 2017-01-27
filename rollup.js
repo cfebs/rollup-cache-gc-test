@@ -1,11 +1,15 @@
 var rollup = require('rollup')
 var babel = require('rollup-plugin-babel');
 
-//const cache = {};
+var cache;
+let i = 0;
+let useCache = process.env.USE_ROLLUP_CACHE;
 
 function build() {
     return new Promise((resolve, reject) => {
         let start = new Date;
+        console.log('#'+(++i));
+
         rollup.rollup({
             entry: 'src/main.js',
             plugins: [
@@ -15,10 +19,13 @@ function build() {
                     exclude: 'node_modules/**'
                 })
             ],
-            //cache: cache,
+            cache: useCache ? cache : null,
         })
         .then((bundle) => {
-            cache = bundle;
+            if (useCache) {
+                cache = bundle;
+            }
+
             bundle.write({
                 format: 'iife',
                 dest: './bundle.js'
@@ -34,7 +41,7 @@ function build() {
     });
 }
 
-let numBuilds = 5000;
+let numBuilds = parseInt(process.env.NUM_BUILDS || 5000, 10);
 let heappath = `/tmp/rolluptester-numbuilds-${numBuilds}-${Date.now()}.heapsnapshot`;
 let chain = Promise.resolve();
 
@@ -46,7 +53,9 @@ while (--numBuilds) {
 
 chain.then(() => {
     console.log('Done!');
-    let heapdump = require('heapdump');
-    console.log(heappath);
-    //heapdump.writeSnapshot(heappath);
+    if (process.env.HEAPDUMP) {
+        let heapdump = require('heapdump');
+        console.log(heappath);
+        heapdump.writeSnapshot(heappath);
+    }
 });
